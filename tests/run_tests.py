@@ -152,6 +152,8 @@ ok('first="true" />' in block, "empty first verse present, self-closed")
 ok("<Anchors" not in block, "no Anchors ever emitted (gotcha 2)")
 ok('WindowsUserName="OseStoryInjector\\testhost"' in block, "honest provenance")
 ok("\n" not in block.replace("\r\n", ""), "no bare LFs in emitted block")
+ok("&lt;" in block and "river_bank <" not in block,
+   "phrase marker is escaped to &lt; in the file, never a bare <")
 attr_order = re.search(r"<story (.*?)>", block).group(1)
 eq(re.findall(r'(\w+)="', attr_order),
    ["name", "stage", "TasksAllowedPf", "TasksRequiredPf", "TasksAllowedCit",
