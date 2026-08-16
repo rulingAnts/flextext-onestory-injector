@@ -26,6 +26,7 @@ from injector.ose_serializer import (
 )
 from injector.project import (
     OneStoryProject, ProjectError, inject, undo, verify_splice,
+    suggest_set_index,
 )
 from injector.story_builder import build_story, derive_stage, loss_report
 from injector.flextext_reader import Text, Phrase, WordToken
@@ -249,6 +250,33 @@ try:
     ok(False, "zero-set project must refuse")
 except ProjectError:
     ok(True, "zero-set project refused")
+
+# ------------------------------------------ set character / suggestion --
+print("\n--- biblical/non-biblical: set character drives the suggestion ---")
+CHAR = BASE.format(sets=(
+    '  <stories SetName="Stories">\r\n'
+    '    <story name="B1" stage="s" TasksAllowedPf="A" TasksRequiredPf="B" '
+    'TasksAllowedCit="C" TasksRequiredCit="D" CountRetellingsTests="0" '
+    'CountTestingQuestionTests="0" guid="g-b1" stageDateTimeStamp="2021-01-01T00:00:00Z">\r\n'
+    '      <CraftingInfo NonBiblicalStory="false">\r\n      </CraftingInfo>\r\n'
+    '      <Verses>\r\n        <Verse guid="g-b2" first="true" />\r\n      </Verses>\r\n'
+    '    </story>\r\n  </stories>\r\n'
+    '  <stories SetName="Non-Biblical Stories">\r\n'
+    '    <story name="N1" stage="s" TasksAllowedPf="A" TasksRequiredPf="B" '
+    'TasksAllowedCit="C" TasksRequiredCit="D" CountRetellingsTests="0" '
+    'CountTestingQuestionTests="0" guid="g-n1" stageDateTimeStamp="2021-01-01T00:00:00Z">\r\n'
+    '      <CraftingInfo NonBiblicalStory="true">\r\n      </CraftingInfo>\r\n'
+    '      <Verses>\r\n        <Verse guid="g-n2" first="true" />\r\n      </Verses>\r\n'
+    '    </story>\r\n  </stories>\r\n'
+))
+pc = proj(CHAR)
+eq(pc.sets[0].character(), False, "all-biblical set -> character False")
+eq(pc.sets[1].character(), True, "all-non-biblical set -> character True")
+eq(suggest_set_index(pc.sets, False), 0, "biblical story -> Stories set")
+eq(suggest_set_index(pc.sets, True), 1, "non-biblical story -> Non-Biblical set")
+eq(p.sets[0].character(), False, "single-set project: character from its stories")
+eq(suggest_set_index(p.sets, True), None,
+   "no matching set exists -> None (UI warns instead of guessing)")
 
 # ------------------------------------------------ inject / verify / undo --
 print("\n--- inject -> verify -> undo, on a synthetic file ---")

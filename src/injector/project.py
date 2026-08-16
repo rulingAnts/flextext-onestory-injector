@@ -74,6 +74,20 @@ class StorySet:
     close_start: Optional[int] # offset of '<' of '</stories>'; None = self-closed
     self_closed: bool
     story_names: List[str] = field(default_factory=list)
+    nb_true: int = 0           # stories with NonBiblicalStory="true"
+    nb_false: int = 0          # ... ="false"
+
+    def character(self) -> Optional[bool]:
+        """True = unanimously non-biblical, False = unanimously biblical,
+        None = mixed or empty. OneStory's UI groups stories BY SET (the
+        Panorama view has a distinct Non-Biblical Stories pane), so the
+        set a story lands in is what a user experiences as its category;
+        the CraftingInfo attribute feeds stage logic. Both must agree."""
+        if self.nb_true and not self.nb_false:
+            return True
+        if self.nb_false and not self.nb_true:
+            return False
+        return None
 
 
 @dataclass
@@ -84,6 +98,26 @@ class Member:
 
     def has_role(self, role: str) -> bool:
         return role in [r.strip() for r in self.member_type.split(",")]
+
+
+def suggest_set_index(sets, non_biblical: bool) -> Optional[int]:
+    """The set a story of this kind belongs in, or None if no set fits.
+
+    Preference order: a set whose existing stories are unanimously of the
+    same kind; break ties toward the conventional names ('Non-Biblical
+    Stories' / 'Stories'), which OneStory's Panorama view uses as panes.
+    Mixed sets (archives) are never suggested."""
+    named = None
+    unanimous = None
+    for s in sets:
+        looks_nb = "non-biblical" in s.set_name.lower()
+        if non_biblical == looks_nb and named is None:
+            named = s.index
+        if s.character() is non_biblical and unanimous is None:
+            unanimous = s.index
+    if named is not None and sets[named].character() in (non_biblical, None):
+        return named
+    return unanimous
 
 
 class OneStoryProject:
@@ -136,6 +170,7 @@ class OneStoryProject:
                 _unescape(n)
                 for n in re.findall(r'<story\s[^>]*?name="([^"]*)"', body)
             ]
+            flags = re.findall(r'NonBiblicalStory="([^"]*)"', body)
             sets.append(
                 StorySet(
                     index=len(sets),
@@ -145,6 +180,8 @@ class OneStoryProject:
                     close_start=close_start,
                     self_closed=self_closed,
                     story_names=names,
+                    nb_true=flags.count("true"),
+                    nb_false=flags.count("false"),
                 )
             )
         if not sets:

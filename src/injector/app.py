@@ -26,7 +26,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from .flextext_reader import read_flextext, FlexTextFile
 from .ose_serializer import render_story, to_bytes
-from .project import OneStoryProject, ProjectError, inject, undo
+from .project import OneStoryProject, ProjectError, inject, undo, suggest_set_index
 from .story_builder import build_story, derive_stage, loss_report
 from .align import PHRASE_CONT
 
@@ -87,9 +87,9 @@ class InjectorApp:
         tk.Label(root, text="Story type:").grid(row=r, column=0, sticky="e", **PAD)
         f = tk.Frame(root)
         tk.Radiobutton(f, text="Biblical story", variable=self.bib_var,
-                       value="biblical", command=self.refresh_ready).pack(side="left")
+                       value="biblical", command=self.on_bib_chosen).pack(side="left")
         tk.Radiobutton(f, text="Non-biblical story", variable=self.bib_var,
-                       value="nonbiblical", command=self.refresh_ready).pack(side="left", padx=12)
+                       value="nonbiblical", command=self.on_bib_chosen).pack(side="left", padx=12)
         f.grid(row=r, column=1, columnspan=2, sticky="w", **PAD)
         r += 1
 
@@ -223,6 +223,20 @@ class InjectorApp:
                 return t
         return None
 
+    def on_bib_chosen(self):
+        """OneStory's UI groups stories BY SET -- the Panorama view has a
+        separate Non-Biblical Stories pane -- so the category the user just
+        picked determines which set the story belongs in. Select it for
+        them; they can still override, and do_inject warns on contradiction.
+        (This is the fix for every import landing 'biblical': the attribute
+        was written correctly, but into the biblical set.)"""
+        if self.project and self.bib_var.get():
+            idx = suggest_set_index(self.project.sets,
+                                    self.bib_var.get() == "nonbiblical")
+            if idx is not None:
+                self.set_dd.current(idx)
+        self.refresh_ready()
+
     def on_text_chosen(self):
         t = self.chosen_text()
         if t:
@@ -310,13 +324,32 @@ class InjectorApp:
                     "Inject anyway as a second story with the same name?"):
                 return
 
+        # A story is EXPERIENCED as biblical/non-biblical by the set it is
+        # in, whatever CraftingInfo says. Injecting a contradiction is
+        # allowed (archives are mixed) but never silent.
+        non_biblical = (self.bib_var.get() == "nonbiblical")
+        chosen = self.project.sets[set_index]
+        if chosen.character() is not None and chosen.character() != non_biblical:
+            kind = "non-biblical" if non_biblical else "biblical"
+            other = "biblical" if non_biblical else "non-biblical"
+            sug = suggest_set_index(self.project.sets, non_biblical)
+            hint = (f'\n\nThe "{self.project.sets[sug].set_name}" set is where '
+                    f"{kind} stories live in this project.") if sug is not None else ""
+            if not messagebox.askyesno(
+                    "Set does not match story type",
+                    f'You marked this story {kind}, but every existing story in '
+                    f'"{chosen.set_name}" is {other}. OneStory Editor groups '
+                    f"stories by set, so it will appear among the {other} "
+                    f"stories.{hint}\n\nInject into \"{chosen.set_name}\" anyway?"):
+                return
+
         crafter = next(m for m in self._crafters if m.name == self.crafter_var.get())
         facil = next(m for m in self._facils if m.name == self.facil_var.get())
 
         story = build_story(
             t,
             story_name=name,
-            non_biblical=(self.bib_var.get() == "nonbiblical"),
+            non_biblical=non_biblical,
             crafter_key=crafter.member_key,
             facilitator_key=facil.member_key,
             stage=self.stage_var.get(),
