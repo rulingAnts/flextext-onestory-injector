@@ -290,6 +290,45 @@ def render_crafting_info(info: CraftingInfo, depth: int) -> List[str]:
 
 
 @dataclass
+class StateTransition:
+    """One `<StateTransition />` inside `<TransitionHistory>`.
+
+    Attribute order measured across 1,272 real occurrences, all self-closed:
+    LoggedInMemberId, FromState, ToState, TransitionDateTime, WindowsUserName.
+
+    The injector emits exactly ONE, with FromState == ToState == the story's
+    stage, preserving the invariant that a story's `stage` equals its last
+    ToState (141/141 in the reference project). WindowsUserName is honest
+    provenance -- the injector's own name plus hostname, never a fabricated
+    MACHINE\\User pretending a person did this.
+    """
+
+    logged_in_member_id: str
+    from_state: str
+    to_state: str
+    transition_datetime: str
+    windows_user_name: str
+
+
+def render_transition_history(
+    transitions: List[StateTransition], depth: int
+) -> List[str]:
+    pad = INDENT * depth
+    out = [f"{pad}<TransitionHistory>"]
+    for t in transitions:
+        out.append(
+            f'{pad}{INDENT}<StateTransition'
+            f' LoggedInMemberId="{esc_attr(t.logged_in_member_id)}"'
+            f' FromState="{esc_attr(t.from_state)}"'
+            f' ToState="{esc_attr(t.to_state)}"'
+            f' TransitionDateTime="{esc_attr(t.transition_datetime)}"'
+            f' WindowsUserName="{esc_attr(t.windows_user_name)}" />'
+        )
+    out.append(f"{pad}</TransitionHistory>")
+    return out
+
+
+@dataclass
 class Story:
     """A `<story>`.
 
@@ -307,6 +346,7 @@ class Story:
     stage_datetime_stamp: str
     crafting_info: CraftingInfo
     verses: List[Verse] = dc_field(default_factory=list)
+    transitions: List[StateTransition] = dc_field(default_factory=list)
     count_retellings_tests: str = "0"
     count_testing_question_tests: str = "0"
 
@@ -336,9 +376,8 @@ def render_story(story: Story, depth: int = 2) -> List[str]:
     Default depth 2 gives the measured indent ladder: story at 4 spaces,
     CraftingInfo and Verses at 6, Verse at 8.
 
-    TransitionHistory is emitted by the caller if wanted -- it is a
-    provenance decision, not a formatting one, and belongs with whatever
-    records who ran the injection.
+    Child order is CraftingInfo, TransitionHistory, Verses -- 141/141 in
+    the reference project, and the schema's sequence is order-significant.
     """
     pad = INDENT * depth
     attrs = " ".join(
@@ -346,6 +385,8 @@ def render_story(story: Story, depth: int = 2) -> List[str]:
     )
     out = [f"{pad}<story {attrs}>"]
     out.extend(render_crafting_info(story.crafting_info, depth + 1))
+    if story.transitions:
+        out.extend(render_transition_history(story.transitions, depth + 1))
     out.extend(render_verses(story.verses, depth + 1))
     out.append(f"{pad}</story>")
     return out

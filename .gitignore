@@ -16,5 +16,5 @@ __pycache__/
 venv/
 build/
 dist/
-*.spec
+# NOT *.spec — packaging/injector.spec is the tracked build definition
 .DS_Store
