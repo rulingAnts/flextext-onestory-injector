@@ -28,6 +28,7 @@ from .flextext_reader import read_flextext, FlexTextFile
 from .ose_serializer import render_story, to_bytes
 from .project import OneStoryProject, ProjectError, inject, undo
 from .story_builder import build_story, derive_stage, loss_report
+from .align import PHRASE_CONT
 
 PAD = {"padx": 8, "pady": 4}
 
@@ -68,6 +69,7 @@ class InjectorApp:
         self.crafter_var = tk.StringVar()
         self.facil_var = tk.StringVar()
         self.stage_var = tk.StringVar()
+        self.phrase_var = tk.StringVar(value="marker")
 
         tk.Label(root, text="Story to import:").grid(row=r, column=0, sticky="e", **PAD)
         self.text_dd = ttk.Combobox(root, textvariable=self.text_var, state="disabled")
@@ -89,6 +91,31 @@ class InjectorApp:
         tk.Radiobutton(f, text="Non-biblical story", variable=self.bib_var,
                        value="nonbiblical", command=self.refresh_ready).pack(side="left", padx=12)
         f.grid(row=r, column=1, columnspan=2, sticky="w", **PAD)
+        r += 1
+
+        # Only shown when the chosen text actually contains phrase-words --
+        # words whose baseline spans several space-separated tokens under one
+        # gloss. OneStory has no such concept, so the user chooses how the
+        # continuation tokens are written.
+        self.phrase_frame = tk.LabelFrame(root, text="Phrase-words detected")
+        self.phrase_label = tk.Label(self.phrase_frame, justify="left", anchor="w")
+        self.phrase_label.pack(fill="x", padx=8, pady=(4, 2))
+        tk.Radiobutton(
+            self.phrase_frame,
+            text=f"Mark continuation words with '{PHRASE_CONT}' "
+                 "(recommended -- points at the word the gloss belongs to)",
+            variable=self.phrase_var, value="marker",
+            command=self.update_preview,
+        ).pack(anchor="w", padx=8)
+        tk.Radiobutton(
+            self.phrase_frame,
+            text="Write '***' holes instead (they will look like unglossed words)",
+            variable=self.phrase_var, value="holes",
+            command=self.update_preview,
+        ).pack(anchor="w", padx=8, pady=(0, 6))
+        self.phrase_frame.grid(row=r, column=0, columnspan=3, sticky="we",
+                               padx=8, pady=4)
+        self.phrase_frame.grid_remove()   # hidden until detection says otherwise
         r += 1
 
         tk.Label(root, text="Story crafter:").grid(row=r, column=0, sticky="e", **PAD)
@@ -200,6 +227,19 @@ class InjectorApp:
         t = self.chosen_text()
         if t:
             self.name_var.set(t.title)
+            n = t.phrase_word_count()
+            if n:
+                ex = ", ".join(
+                    f'“{w}” = “{g}”' if g else f'“{w}”'
+                    for w, g in t.phrase_word_examples()
+                )
+                self.phrase_label.config(text=(
+                    f"This story glosses {n} multi-word unit(s) as single "
+                    f"words (e.g. {ex}).\nOneStory can only pair glosses "
+                    "word-for-word, so choose how the extra words are marked:"))
+                self.phrase_frame.grid()
+            else:
+                self.phrase_frame.grid_remove()
         self._refresh_stages()
         self.update_preview()
         self.refresh_ready()
@@ -226,7 +266,7 @@ class InjectorApp:
             for i, p in enumerate(t.phrases[:8], 1):
                 out.append(f"Verse {i}:")
                 out.append(f"  {p.vernacular_line()}")
-                g = p.gloss_line()
+                g = p.gloss_line(self.phrase_var.get())
                 if g:
                     out.append(f"  {g}")
                 if p.free:
@@ -235,7 +275,8 @@ class InjectorApp:
             if len(t.phrases) > 8:
                 out.append(f"… and {len(t.phrases) - 8} more verse(s).")
             out.append("")
-            out += ["Loss report:"] + [f"  • {n}" for n in loss_report(t)]
+            out += ["Loss report:"] + [
+                f"  • {n}" for n in loss_report(t, self.phrase_var.get())]
             if self.flex and self.flex.warnings:
                 out += ["", "Warnings:"] + [f"  ⚠ {w}" for w in self.flex.warnings]
             self.preview.insert("1.0", "\n".join(out))
@@ -281,6 +322,7 @@ class InjectorApp:
             stage=self.stage_var.get(),
             tasks=self.project.harvest_tasks(),
             existing_guids=self.project.guids(),
+            phrase_mode=self.phrase_var.get(),
         )
         block = to_bytes(render_story(story))
 

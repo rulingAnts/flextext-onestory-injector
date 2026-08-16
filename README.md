@@ -62,8 +62,21 @@ facilitator's next task after import — which is exactly what the default stage
 as one analytical word with one gloss. OneStory cannot — a single space is its
 entire word model, and the Adapt It integration is word-based too. The surface
 words are kept verbatim (fusing them would alter the text); the joint gloss
-goes under the first word, underscore-joined (`big_house`), and the remaining
-words get `***` holes so everything after stays aligned.
+goes under the first word, underscore-joined, and each following word gets a
+backward-pointing `<`:
+
+```
+ru weni
+river_bank <
+```
+
+`<` means "belongs to the word before" — deliberately distinct from `***`
+("not glossed yet"), so nobody 'fixes' a finished phrase-word, and an exporter
+can reconstruct the original single word. Collision-checked: 0 of 15,723 real
+gloss tokens even contain a `<`. When the injector detects phrase-words in the
+chosen story it shows the count and examples and asks which convention to use
+(`<` recommended; `***` holes available for teams that prefer the old rule —
+an *unglossed* phrase-word gets `***` on every token either way).
 
 `***` is the hole marker throughout: a translator's mark for "this word has no
 gloss", chosen because OneStory literally cannot represent an empty slot

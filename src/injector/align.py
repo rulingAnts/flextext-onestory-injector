@@ -31,6 +31,20 @@ from typing import List, Optional
 
 HOLE = "***"
 
+# Phrase-continuation marker (backward-pointing): this surface token belongs
+# to the PREVIOUS token's gloss -- the pair was glossed as one analytical
+# word. Distinct from HOLE on purpose: HOLE means "not glossed yet, work to
+# do"; the marker means "deliberately glossed as a unit, nothing to do".
+# Collision-checked: 0 of 15,723 gloss tokens in the reference project even
+# contain a '<'. An exporter can reconstruct the original phrase-word from
+# it; HOLE never can (ambiguous with genuinely unglossed).
+PHRASE_CONT = "<"
+
+# How to write the continuation tokens of a phrase-word:
+#   "marker" (recommended): river_bank <      -- round-trippable, honest
+#   "holes"  (plan D2):     river_bank ***    -- reads as unglossed work
+PHRASE_MODES = ("marker", "holes")
+
 
 def underscore_join(gloss: str) -> str:
     """Collapse whitespace runs in a gloss to single underscores.
@@ -42,30 +56,42 @@ def underscore_join(gloss: str) -> str:
     return "_".join(gloss.split())
 
 
-def gloss_tokens_for_word(baseline_text: str, gloss: Optional[str]) -> List[str]:
+def gloss_tokens_for_word(
+    baseline_text: str, gloss: Optional[str], phrase_mode: str = "marker"
+) -> List[str]:
     """Gloss tokens for one ``.flextext`` word, honouring the phrase rule.
 
     Returns exactly as many tokens as ``baseline_text`` has surface tokens,
     so callers can concatenate per-word results and keep parity by
     construction.
+
+    An UNGLOSSED phrase-word gets holes on every token regardless of mode:
+    there is no unit gloss for a marker to continue, and holes are the
+    honest "work to do" state.
     """
+    if phrase_mode not in PHRASE_MODES:
+        raise ValueError(f"phrase_mode must be one of {PHRASE_MODES}")
     n_surface = len(baseline_text.split())
     if n_surface == 0:
         return []
     g = underscore_join(gloss) if gloss and gloss.strip() else ""
-    first = g if g else HOLE
-    return [first] + [HOLE] * (n_surface - 1)
+    if not g:
+        return [HOLE] * n_surface
+    cont = PHRASE_CONT if phrase_mode == "marker" else HOLE
+    return [g] + [cont] * (n_surface - 1)
 
 
 def strip_trailing_holes(tokens: List[str]) -> List[str]:
-    """Drop trailing holes only. Medial holes are load-bearing."""
+    """Drop trailing holes only. Medial holes are load-bearing, and
+    trailing PHRASE_CONT markers are never dropped -- they carry the
+    phrase-word information."""
     end = len(tokens)
     while end > 0 and tokens[end - 1] == HOLE:
         end -= 1
     return tokens[:end]
 
 
-def build_gloss_line(pairs: List[tuple]) -> str:
+def build_gloss_line(pairs: List[tuple], phrase_mode: str = "marker") -> str:
     """Build the NationalBt line from (baseline_text, gloss) word pairs.
 
     If no word has a real gloss, returns '' -- the StoryLine is then
@@ -74,7 +100,7 @@ def build_gloss_line(pairs: List[tuple]) -> str:
     """
     toks: List[str] = []
     for baseline_text, gloss in pairs:
-        toks.extend(gloss_tokens_for_word(baseline_text, gloss))
+        toks.extend(gloss_tokens_for_word(baseline_text, gloss, phrase_mode))
     toks = strip_trailing_holes(toks)
     if all(t == HOLE for t in toks):
         return ""

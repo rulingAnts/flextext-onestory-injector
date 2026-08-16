@@ -93,6 +93,7 @@ def build_story(
     tasks: dict,
     existing_guids: set,
     hostname: Optional[str] = None,
+    phrase_mode: str = "marker",
 ) -> Story:
     """Assemble the Story. All arguments are explicit: the UI collects them,
     and nothing here invents a value that OneStory treats as configuration.
@@ -109,7 +110,7 @@ def build_story(
         vern = phrase.vernacular_line()
         if vern:
             lines.append(StoryLine(LANG_VERNACULAR, vern))
-        gloss = phrase.gloss_line()
+        gloss = phrase.gloss_line(phrase_mode)
         if gloss:
             lines.append(StoryLine(LANG_NATIONAL_BT, gloss))
         if phrase.free:
@@ -143,13 +144,13 @@ def build_story(
     )
 
 
-def loss_report(text: Text) -> List[str]:
+def loss_report(text: Text, phrase_mode: str = "marker") -> List[str]:
     """What the .flextext held that OneStory cannot -- shown, never silent."""
     notes: List[str] = []
     hole_count = 0
     phrase_words = 0
     for p in text.phrases:
-        g = p.gloss_line()
+        g = p.gloss_line(phrase_mode)
         hole_count += g.split().count(HOLE) if g else 0
         phrase_words += sum(1 for w in p.words if not w.is_punct and " " in w.text)
     if hole_count:
@@ -158,11 +159,19 @@ def loss_report(text: Text) -> List[str]:
             "remaining glosses stay under the right words."
         )
     if phrase_words:
-        notes.append(
-            f"{phrase_words} phrase-word(s) (one analysis over several words) "
-            "were glossed on their first word, with the underscore-joined "
-            "gloss; OneStory has no phrase-word concept."
-        )
+        if phrase_mode == "marker":
+            notes.append(
+                f"{phrase_words} phrase-word(s) (one analysis spanning several "
+                "words) carry the underscore-joined gloss on their first word "
+                "and a '<' on each following word, meaning 'belongs to the "
+                "word before'. OneStory has no phrase-word concept."
+            )
+        else:
+            notes.append(
+                f"{phrase_words} phrase-word(s) were glossed on their first "
+                f"word with '{HOLE}' on the rest -- indistinguishable from "
+                "unglossed words, and not reconstructible on export."
+            )
     notes.append(
         "Not carried over (OneStory has no equivalent): morpheme breakdowns, "
         "part-of-speech tags, literal translations, notes, and audio "

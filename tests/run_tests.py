@@ -55,7 +55,11 @@ eq(align.underscore_join("big house"), "big_house", "gloss spaces -> underscore"
 eq(align.gloss_tokens_for_word("ka", "one"), ["one"], "simple word")
 eq(align.gloss_tokens_for_word("ka", None), ["***"], "unglossed word -> hole")
 eq(align.gloss_tokens_for_word("ka mo", "big house"),
-   ["big_house", "***"], "phrase-word: joint gloss on first, hole on rest")
+   ["big_house", "<"], "phrase-word (marker mode): '<' points backward")
+eq(align.gloss_tokens_for_word("ka mo", "big house", "holes"),
+   ["big_house", "***"], "phrase-word (holes mode): plan-D2 behaviour")
+eq(align.gloss_tokens_for_word("ka mo si", None),
+   ["***", "***", "***"], "UNGLOSSED phrase-word: holes in every mode")
 eq(align.build_gloss_line([("ka", "g1"), ("mo", None), ("si", "g3")]),
    "g1 *** g3", "medial hole kept")
 eq(align.build_gloss_line([("ka", "g1"), ("mo", None), ("si", None)]),
@@ -63,7 +67,16 @@ eq(align.build_gloss_line([("ka", "g1"), ("mo", None), ("si", None)]),
 eq(align.build_gloss_line([("ka", None), ("mo", None)]),
    "", "all holes -> no gloss line at all")
 eq(align.build_gloss_line([("ka mo", "big house"), ("si", "g")]),
-   "big_house *** g", "phrase-word then normal word")
+   "big_house < g", "phrase-word then normal word (marker)")
+eq(align.build_gloss_line([("si", "g"), ("ka mo", "big house")]),
+   "g big_house <", "TRAILING marker never stripped -- it carries the phrase")
+eq(align.build_gloss_line([("ka mo", "big house"), ("si", "g")], "holes"),
+   "big_house *** g", "holes mode preserved for teams that want it")
+try:
+    align.build_gloss_line([("ka", "g")], "bogus")
+    ok(False, "unknown phrase_mode must raise")
+except ValueError:
+    ok(True, "unknown phrase_mode refused")
 
 # -------------------------------------------------------------- reader --
 print("\n--- flextext reader ---")
@@ -111,8 +124,13 @@ eq(t.phrases[0].gloss_line(), "one *** three", "empty gls is a hole; punct has n
 eq(t.phrases[0].free, "The first sentence.", "free translation")
 eq(t.phrases[1].vernacular_line(), "“ru weni ta”",
    "leading punct glued to next word; trailing to previous")
-eq(t.phrases[1].gloss_line(), "river_bank",
-   "phrase-word joint gloss, trailing holes dropped")
+eq(t.phrases[1].gloss_line(), "river_bank <",
+   "phrase-word: marker on continuation; trailing HOLE dropped after it")
+eq(t.phrases[1].gloss_line("holes"), "river_bank",
+   "holes mode: continuation merges into dropped trailing holes")
+eq(t.phrase_word_count(), 1, "phrase-word detection for the UI")
+eq(t.phrase_word_examples(), [("ru weni", "river bank")],
+   "phrase-word example for the UI dialog")
 
 # ---------------------------------------------------------- serializer --
 print("\n--- serializer: synthetic story shape ---")
@@ -141,6 +159,10 @@ eq(re.findall(r'(\w+)="', attr_order),
     "guid", "stageDateTimeStamp"],
    "story attribute order matches the measured OSE order")
 ok(any("no gloss" in n for n in loss_report(t)), "loss report mentions holes")
+ok(any("'<'" in n for n in loss_report(t, "marker")),
+   "loss report (marker) explains the backward pointer")
+ok(any("indistinguishable" in n for n in loss_report(t, "holes")),
+   "loss report (holes) warns about ambiguity")
 
 # ------------------------------------------------------------- project --
 print("\n--- project: set discovery hazards ---")

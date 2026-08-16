@@ -70,7 +70,7 @@ class Phrase:
             parts.append(pending_leading)
         return collapse_whitespace(" ".join(parts))
 
-    def gloss_line(self) -> str:
+    def gloss_line(self, phrase_mode: str = "marker") -> str:
         """The NationalBt line, token-parallel to vernacular_line().
 
         Punctuation is merged into its neighbour's surface token above, so
@@ -81,13 +81,29 @@ class Phrase:
         only, using each word's own surface text.
         """
         pairs = [(w.text, w.gloss) for w in self.words if not w.is_punct]
-        return build_gloss_line(pairs)
+        return build_gloss_line(pairs, phrase_mode)
+
+    def phrase_words(self):
+        """Words spanning several surface tokens (internal space)."""
+        return [w for w in self.words if not w.is_punct and " " in w.text]
 
 
 @dataclass
 class Text:
     title: str
     phrases: List[Phrase] = field(default_factory=list)
+
+    def phrase_word_count(self) -> int:
+        return sum(len(p.phrase_words()) for p in self.phrases)
+
+    def phrase_word_examples(self, limit: int = 3):
+        out = []
+        for p in self.phrases:
+            for w in p.phrase_words():
+                out.append((w.text, w.gloss or ""))
+                if len(out) >= limit:
+                    return out
+        return out
 
 
 @dataclass
