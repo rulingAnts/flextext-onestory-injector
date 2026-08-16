@@ -62,12 +62,12 @@ facilitator's next task after import — which is exactly what the default stage
 as one analytical word with one gloss. OneStory cannot — a single space is its
 entire word model, and the Adapt It integration is word-based too. The surface
 words are kept verbatim (fusing them would alter the text); the joint gloss
-goes under the first word, underscore-joined, and each following word gets a
+goes under the first word, period-joined, and each following word gets a
 backward-pointing `<`:
 
 ```
 ru weni
-river_bank <
+river.bank <
 ```
 
 `<` means "belongs to the word before" — deliberately distinct from `***`

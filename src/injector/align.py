@@ -17,8 +17,9 @@ plus the import-direction rules that module does not need:
   and neither does the Adapt It glossing integration. So the surface tokens
   are kept verbatim in the Vernacular line (fusing them would alter the
   text), the joint gloss goes under the FIRST surface token, and the
-  remaining tokens get holes. A gloss with internal spaces is
-  underscore-joined so it stays one token (the rumah_besar rule, D2).
+  remaining tokens get holes/markers. A gloss with internal spaces is
+  period-joined so it stays one token (``river.bank`` -- the Leipzig
+  Glossing Rules convention for a multi-word gloss of a single element).
 
 * Trailing holes are dropped from the emitted gloss line (D1): OneStory
   pads short gloss lines at the end anyway, so trailing ``***`` carry no
@@ -31,6 +32,12 @@ from typing import List, Optional
 
 HOLE = "***"
 
+# Joins the words of a multi-word gloss into one token. A period follows
+# the Leipzig Glossing Rules convention (child.PL, put.on), which FLEx
+# users already read. Unlike HOLE and PHRASE_CONT this is a joiner, not a
+# parsed marker, so uniqueness does not matter.
+GLOSS_JOINER = "."
+
 # Phrase-continuation marker (backward-pointing): this surface token belongs
 # to the PREVIOUS token's gloss -- the pair was glossed as one analytical
 # word. Distinct from HOLE on purpose: HOLE means "not glossed yet, work to
@@ -41,19 +48,19 @@ HOLE = "***"
 PHRASE_CONT = "<"
 
 # How to write the continuation tokens of a phrase-word:
-#   "marker" (recommended): river_bank <      -- round-trippable, honest
-#   "holes"  (plan D2):     river_bank ***    -- reads as unglossed work
+#   "marker" (recommended): river.bank <      -- round-trippable, honest
+#   "holes"  (plan D2):     river.bank ***    -- reads as unglossed work
 PHRASE_MODES = ("marker", "holes")
 
 
-def underscore_join(gloss: str) -> str:
-    """Collapse whitespace runs in a gloss to single underscores.
+def join_gloss(gloss: str) -> str:
+    """Collapse whitespace runs in a gloss to single GLOSS_JOINERs.
 
     A gloss containing a space would split into two tokens and shift every
     following gloss one word left -- the exact failure the whole alignment
     exists to prevent.
     """
-    return "_".join(gloss.split())
+    return GLOSS_JOINER.join(gloss.split())
 
 
 def gloss_tokens_for_word(
@@ -74,7 +81,7 @@ def gloss_tokens_for_word(
     n_surface = len(baseline_text.split())
     if n_surface == 0:
         return []
-    g = underscore_join(gloss) if gloss and gloss.strip() else ""
+    g = join_gloss(gloss) if gloss and gloss.strip() else ""
     if not g:
         return [HOLE] * n_surface
     cont = PHRASE_CONT if phrase_mode == "marker" else HOLE

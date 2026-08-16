@@ -162,7 +162,7 @@ def loss_report(text: Text, phrase_mode: str = "marker") -> List[str]:
         if phrase_mode == "marker":
             notes.append(
                 f"{phrase_words} phrase-word(s) (one analysis spanning several "
-                "words) carry the underscore-joined gloss on their first word "
+                "words) carry the period-joined gloss on their first word "
                 "and a '<' on each following word, meaning 'belongs to the "
                 "word before'. OneStory has no phrase-word concept."
             )

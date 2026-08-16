@@ -52,13 +52,16 @@ def eq(actual, expected, what):
 
 # ---------------------------------------------------------------- align --
 print("\n--- align: holes, phrase rule, trailing holes ---")
-eq(align.underscore_join("big house"), "big_house", "gloss spaces -> underscore")
+eq(align.join_gloss("big house"), "big.house", "gloss spaces -> period (Leipzig)")
+eq(align.join_gloss("a  b   c"), "a.b.c", "runs collapse to single joiner")
 eq(align.gloss_tokens_for_word("ka", "one"), ["one"], "simple word")
+eq(align.gloss_tokens_for_word("ka", "next to"), ["next.to"],
+   "ONE baseline word with a multi-word gloss: joined, no phrase marker")
 eq(align.gloss_tokens_for_word("ka", None), ["***"], "unglossed word -> hole")
 eq(align.gloss_tokens_for_word("ka mo", "big house"),
-   ["big_house", "<"], "phrase-word (marker mode): '<' points backward")
+   ["big.house", "<"], "phrase-word (marker mode): '<' points backward")
 eq(align.gloss_tokens_for_word("ka mo", "big house", "holes"),
-   ["big_house", "***"], "phrase-word (holes mode): plan-D2 behaviour")
+   ["big.house", "***"], "phrase-word (holes mode): plan-D2 behaviour")
 eq(align.gloss_tokens_for_word("ka mo si", None),
    ["***", "***", "***"], "UNGLOSSED phrase-word: holes in every mode")
 eq(align.build_gloss_line([("ka", "g1"), ("mo", None), ("si", "g3")]),
@@ -68,11 +71,11 @@ eq(align.build_gloss_line([("ka", "g1"), ("mo", None), ("si", None)]),
 eq(align.build_gloss_line([("ka", None), ("mo", None)]),
    "", "all holes -> no gloss line at all")
 eq(align.build_gloss_line([("ka mo", "big house"), ("si", "g")]),
-   "big_house < g", "phrase-word then normal word (marker)")
+   "big.house < g", "phrase-word then normal word (marker)")
 eq(align.build_gloss_line([("si", "g"), ("ka mo", "big house")]),
-   "g big_house <", "TRAILING marker never stripped -- it carries the phrase")
+   "g big.house <", "TRAILING marker never stripped -- it carries the phrase")
 eq(align.build_gloss_line([("ka mo", "big house"), ("si", "g")], "holes"),
-   "big_house *** g", "holes mode preserved for teams that want it")
+   "big.house *** g", "holes mode preserved for teams that want it")
 try:
     align.build_gloss_line([("ka", "g")], "bogus")
     ok(False, "unknown phrase_mode must raise")
@@ -125,9 +128,9 @@ eq(t.phrases[0].gloss_line(), "one *** three", "empty gls is a hole; punct has n
 eq(t.phrases[0].free, "The first sentence.", "free translation")
 eq(t.phrases[1].vernacular_line(), "“ru weni ta”",
    "leading punct glued to next word; trailing to previous")
-eq(t.phrases[1].gloss_line(), "river_bank <",
+eq(t.phrases[1].gloss_line(), "river.bank <",
    "phrase-word: marker on continuation; trailing HOLE dropped after it")
-eq(t.phrases[1].gloss_line("holes"), "river_bank",
+eq(t.phrases[1].gloss_line("holes"), "river.bank",
    "holes mode: continuation merges into dropped trailing holes")
 eq(t.phrase_word_count(), 1, "phrase-word detection for the UI")
 eq(t.phrase_word_examples(), [("ru weni", "river bank")],
@@ -153,7 +156,7 @@ ok('first="true" />' in block, "empty first verse present, self-closed")
 ok("<Anchors" not in block, "no Anchors ever emitted (gotcha 2)")
 ok('WindowsUserName="OseStoryInjector\\testhost"' in block, "honest provenance")
 ok("\n" not in block.replace("\r\n", ""), "no bare LFs in emitted block")
-ok("&lt;" in block and "river_bank <" not in block,
+ok("&lt;" in block and "river.bank <" not in block,
    "phrase marker is escaped to &lt; in the file, never a bare <")
 attr_order = re.search(r"<story (.*?)>", block).group(1)
 eq(re.findall(r'(\w+)="', attr_order),
