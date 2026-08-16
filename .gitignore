@@ -1,0 +1,20 @@
+# ---------------------------------------------------------------------------
+# PRIVATE LANGUAGE DATA — never commit a real OneStory project.
+# A .onestory file carries member names, emails and stored HgPassword values
+# alongside years of unpublished language data. Keeping one locally to test
+# against is expected; committing one is not. Do not defeat this with -f.
+# ---------------------------------------------------------------------------
+*.onestory
+*.flextext
+*.eaf
+/sample/*
+!/sample/README.md
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.spec
+.DS_Store
