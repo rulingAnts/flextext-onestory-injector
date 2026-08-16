@@ -197,6 +197,160 @@ def render_verses(verses: List[Verse], depth: int) -> List[str]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# Story level
+# ---------------------------------------------------------------------------
+#
+# Attribute order is part of byte-exactness, and it is not a guess: all 141
+# stories in the reference project use ONE ordering, with every attribute
+# always present. Measured, not read off the schema.
+STORY_ATTR_ORDER = (
+    "name",
+    "stage",
+    "TasksAllowedPf",
+    "TasksRequiredPf",
+    "TasksAllowedCit",
+    "TasksRequiredCit",
+    "CountRetellingsTests",
+    "CountTestingQuestionTests",
+    "guid",
+    "stageDateTimeStamp",
+)
+
+# Member roles inside <CraftingInfo>, in emission order.
+MEMBER_ROLES = (
+    "StoryCrafter",
+    "ProjectFacilitator",
+    "BackTranslator",
+    "Consultant",
+    "Coach",
+)
+
+
+def render_member_role(role: str, member_id: str, depth: int) -> List[str]:
+    """Render one member-role element, as two lines.
+
+    These are NEVER self-closed: the element carries whitespace-only
+    content, which forces the open/close form. Measured on a binary read of
+    the reference project, the separator is CRLF plus the element's own
+    indent, identical in all 414 occurrences:
+
+        <StoryCrafter memberID="...">
+        </StoryCrafter>
+
+    Two lines are returned rather than one string, so the caller's CRLF
+    join produces the break -- returning an embedded newline here would put
+    a literal '\\n' in the middle of a "line" and diff against every story
+    OSE has written.
+    """
+    pad = INDENT * depth
+    return [f'{pad}<{role} memberID="{esc_attr(member_id)}">', f"{pad}</{role}>"]
+
+
+@dataclass
+class CraftingInfo:
+    """`<CraftingInfo>`.
+
+    ``non_biblical`` is the ONE thing the user must be asked: OneStory is
+    used for both biblical and non-biblical storying, and a project holds a
+    mix -- 93 biblical to 48 non-biblical in the reference project. There is
+    no safe default, so the injector prompts rather than guessing.
+
+    Note the attribute is negative (`NonBiblicalStory`), so a *biblical*
+    story is ``NonBiblicalStory="false"``. Easy to invert by accident.
+    """
+
+    non_biblical: bool
+    story_crafter: Optional[str] = None
+    project_facilitator: Optional[str] = None
+    back_translator: Optional[str] = None
+    consultant: Optional[str] = None
+    coach: Optional[str] = None
+
+    def member_for(self, role: str) -> Optional[str]:
+        return {
+            "StoryCrafter": self.story_crafter,
+            "ProjectFacilitator": self.project_facilitator,
+            "BackTranslator": self.back_translator,
+            "Consultant": self.consultant,
+            "Coach": self.coach,
+        }[role]
+
+
+def render_crafting_info(info: CraftingInfo, depth: int) -> List[str]:
+    pad = INDENT * depth
+    flag = "true" if info.non_biblical else "false"
+    out = [f'{pad}<CraftingInfo NonBiblicalStory="{flag}">']
+    for role in MEMBER_ROLES:
+        member_id = info.member_for(role)
+        if member_id:
+            out.extend(render_member_role(role, member_id, depth + 1))
+    out.append(f"{pad}</CraftingInfo>")
+    return out
+
+
+@dataclass
+class Story:
+    """A `<story>`.
+
+    Every attribute is always emitted -- 141 of 141 in the reference project
+    carry all ten -- so none of these are optional.
+    """
+
+    name: str
+    stage: str
+    tasks_allowed_pf: str
+    tasks_required_pf: str
+    tasks_allowed_cit: str
+    tasks_required_cit: str
+    guid: str
+    stage_datetime_stamp: str
+    crafting_info: CraftingInfo
+    verses: List[Verse] = dc_field(default_factory=list)
+    count_retellings_tests: str = "0"
+    count_testing_question_tests: str = "0"
+
+    def attrs(self) -> "OrderedDictLike":
+        return {
+            "name": self.name,
+            "stage": self.stage,
+            "TasksAllowedPf": self.tasks_allowed_pf,
+            "TasksRequiredPf": self.tasks_required_pf,
+            "TasksAllowedCit": self.tasks_allowed_cit,
+            "TasksRequiredCit": self.tasks_required_cit,
+            "CountRetellingsTests": self.count_retellings_tests,
+            "CountTestingQuestionTests": self.count_testing_question_tests,
+            "guid": self.guid,
+            "stageDateTimeStamp": self.stage_datetime_stamp,
+        }
+
+
+# Only used for the type hint above; kept loose so this module stays
+# dependency-free on older Pythons.
+OrderedDictLike = dict
+
+
+def render_story(story: Story, depth: int = 2) -> List[str]:
+    """Render a whole `<story>`.
+
+    Default depth 2 gives the measured indent ladder: story at 4 spaces,
+    CraftingInfo and Verses at 6, Verse at 8.
+
+    TransitionHistory is emitted by the caller if wanted -- it is a
+    provenance decision, not a formatting one, and belongs with whatever
+    records who ran the injection.
+    """
+    pad = INDENT * depth
+    attrs = " ".join(
+        f'{k}="{esc_attr(v)}"' for k, v in story.attrs().items()
+    )
+    out = [f"{pad}<story {attrs}>"]
+    out.extend(render_crafting_info(story.crafting_info, depth + 1))
+    out.extend(render_verses(story.verses, depth + 1))
+    out.append(f"{pad}</story>")
+    return out
+
+
 def to_bytes(lines: List[str], trailing_newline: bool = True) -> bytes:
     """Join rendered lines with CRLF and encode UTF-8, no BOM.
 
