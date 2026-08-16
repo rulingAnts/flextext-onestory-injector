@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlexText → OneStory Injector</title>
+<meta name="description" content="Add a story from a FLEx / FlexText interlinear file into a OneStory Editor project — word glosses included.">
+<style>
+  /* Self-contained on purpose: no external fonts, scripts or images, so the
+     page loads fully on slow village connections and works from cache. */
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --border: #3f4f66;
+    --accent: #0ea5e9; --accent2: #a78bfa; --text: #f1f5f9;
+    --muted: #94a3b8; --ok: #34d399; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh; display: flex; justify-content: center; padding: 40px 16px;
+  }
+  main { max-width: 640px; width: 100%; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 34px 38px; margin-bottom: 18px;
+  }
+  h1 {
+    font-size: 1.7rem; letter-spacing: -0.02em; line-height: 1.25;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; margin-bottom: 8px;
+  }
+  .tagline { color: var(--muted); margin-bottom: 26px; }
+  .dl {
+    display: inline-block; background: var(--accent); color: #04212e;
+    font-weight: 700; font-size: 1.05rem; text-decoration: none;
+    padding: 14px 30px; border-radius: 8px; margin: 4px 0 8px;
+  }
+  .dl:hover { filter: brightness(1.12); }
+  .dl-note { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+  h2 { font-size: 1.05rem; margin: 22px 0 8px; color: var(--accent); }
+  ul { padding-left: 20px; }
+  li { margin: 5px 0; }
+  .steps li { margin: 8px 0; }
+  .warn { color: var(--warn); }
+  .ok { color: var(--ok); }
+  code {
+    background: rgba(148,163,184,0.12); border-radius: 4px;
+    padding: 1px 6px; font-family: Consolas, 'SF Mono', monospace; font-size: 0.9em;
+  }
+  footer { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 8px; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>FlexText → OneStory Injector</h1>
+    <p class="tagline">
+      Add a story from a FLEx / FlexText Editor interlinear file
+      (<code>.flextext</code>) into a OneStory Editor project —
+      <strong>word glosses included</strong>, nothing retyped.
+    </p>
+
+    <a class="dl" href="https://github.com/rulingAnts/flextext-onestory-injector/releases/latest">
+      ⬇ Download for Windows
+    </a>
+    <p class="dl-note">
+      Free, no admin rights needed. If the releases page shows no installer
+      yet, the first Windows build is still in testing — check back soon.
+    </p>
+
+    <h2>What it does</h2>
+    <ul>
+      <li>Your team transcribes, glosses and back-translates a recording in
+          FlexText Editor (or FLEx).</li>
+      <li>This tool adds that story to your <code>.onestory</code> project as
+          a new story: baseline text, word-by-word gloss line, and free
+          translation, all aligned.</li>
+      <li>It asks whether the story is <em>biblical</em> or
+          <em>non-biblical</em>, who crafted it, and which story set it
+          belongs in — then shows a preview before anything is written.</li>
+    </ul>
+
+    <h2>Before you inject</h2>
+    <ol class="steps">
+      <li><span class="warn">Close OneStory Editor.</span></li>
+      <li><span class="warn">Use a copy of your project</span> until you have
+          checked the result — this tool writes into the project file.</li>
+      <li>A timestamped backup is made automatically before every injection,
+          and <em>Undo last injection</em> restores it.</li>
+    </ol>
+
+    <h2>After injecting</h2>
+    <ul>
+      <li>Open the project in OneStory Editor and read the new story
+          through.</li>
+      <li>Words with no gloss show <code>***</code> — that is deliberate: it
+          keeps every other gloss under the right word. Fill them in as you
+          gloss.</li>
+      <li>For Bible stories, adding verse anchors is your next task —
+          OneStory's task list will say so.</li>
+    </ul>
+
+    <h2><span class="ok">Safety</span></h2>
+    <ul>
+      <li>Everything outside the added story is left byte-for-byte
+          untouched — verified on every write, so Send/Receive stays
+          clean for your team.</li>
+      <li>The tool refuses rather than guesses: if the project changed on
+          disk, if a story set is ambiguous, or if an undo would overwrite
+          someone's newer work, it stops and says why.</li>
+    </ul>
+  </div>
+  <footer>
+    Free software, AGPL-3.0 —
+    <a href="https://github.com/rulingAnts/flextext-onestory-injector">source code</a>.
+    Works with SIL <a href="https://software.sil.org/onestoryeditor/">OneStory Editor</a>
+    projects. Not affiliated with SIL International.
+  </footer>
+</main>
+</body>
+</html>
